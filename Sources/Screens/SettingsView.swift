@@ -10,14 +10,20 @@ struct SettingsView: View {
 
     @State private var profileName = ""
     @State private var canton: Canton?
+    @State private var avatarName: String?
+    @State private var showAvatarPicker = false
     @State private var showDeleteConfirm = false
     @State private var showChangePassphrase = false
+    @State private var showBackup = false
+    @State private var showRestore = false
 
     var body: some View {
         Form {
             profileSection
             languageSection
+            themeSection
             securitySection
+            dataSection
             dangerSection
             aboutSection
         }
@@ -25,8 +31,18 @@ struct SettingsView: View {
         .navigationTitle(loc(.navSettings))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: loadProfile)
+        .sheet(isPresented: $showAvatarPicker) {
+            AvatarPickerSheet(selected: $avatarName).environmentObject(loc)
+        }
+        .onChange(of: avatarName) { saveProfile() }
         .sheet(isPresented: $showChangePassphrase) {
             ChangePassphraseSheet().environmentObject(model).environmentObject(loc)
+        }
+        .sheet(isPresented: $showBackup) {
+            BackupSheet().environmentObject(model).environmentObject(loc)
+        }
+        .sheet(isPresented: $showRestore) {
+            RestoreSheet().environmentObject(model).environmentObject(loc)
         }
         .confirmationDialog(loc(.settingsDeleteAll), isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button(loc(.settingsDeleteAll), role: .destructive) { Task { await model.deleteAllLocalData() } }
@@ -38,6 +54,16 @@ struct SettingsView: View {
 
     private var profileSection: some View {
         Section(loc(.settingsProfile)) {
+            Button { showAvatarPicker = true } label: {
+                HStack(spacing: KontivaTheme.Space.md) {
+                    ProfileAvatar(name: avatarName, size: 52)
+                    Text(profileName.isEmpty ? loc(.pdfDefaultHousehold) : profileName)
+                        .font(.headline).foregroundStyle(KontivaTheme.textPrimary)
+                    Spacer(minLength: 0)
+                    Image(systemName: "pencil.circle").foregroundStyle(KontivaTheme.textTertiary)
+                }
+            }
+            .buttonStyle(.plain)
             TextField(loc(.profileName), text: $profileName)
             Picker(loc(.settingsCanton), selection: $canton) {
                 Text("—").tag(Canton?.none)
@@ -58,6 +84,37 @@ struct SettingsView: View {
                 ForEach(AppLanguage.allCases) { Text($0.displayName).tag($0) }
             }
         }
+    }
+
+    private var themeSection: some View {
+        Section {
+            HStack(spacing: KontivaTheme.Space.sm) {
+                ForEach(AccentTheme.allCases) { accentSwatch($0) }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, KontivaTheme.Space.xxs)
+        } header: {
+            Text(loc(.settingsTheme))
+        } footer: {
+            Text(loc(model.settings.accent.labelKey))
+        }
+    }
+
+    private func accentSwatch(_ theme: AccentTheme) -> some View {
+        let selected = model.settings.accent == theme
+        return Button { withAnimation(.snappy) { model.setAccent(theme) } } label: {
+            ZStack {
+                Circle().fill(theme.color).frame(width: 30, height: 30)
+                    .overlay(Circle().strokeBorder(.white.opacity(0.45), lineWidth: 1))
+                if selected {
+                    Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
+                }
+            }
+            .padding(3)
+            .overlay(Circle().strokeBorder(selected ? theme.color : .clear, lineWidth: 2))
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var securitySection: some View {
@@ -81,6 +138,26 @@ struct SettingsView: View {
             Label(loc(.securityNote), systemImage: "lock.fill")
                 .font(.caption).foregroundStyle(KontivaTheme.positive)
         }
+    }
+
+    private var dataSection: some View {
+        Section {
+            Button { showBackup = true } label: { Label(loc(.settingsBackup), systemImage: "arrow.up.doc") }
+            Button { showRestore = true } label: { Label(loc(.settingsRestore), systemImage: "arrow.down.doc") }
+            Button(action: exportPDF) { Label(loc(.exportReport), systemImage: "doc.richtext") }
+        } header: {
+            Text(loc(.settingsData))
+        } footer: {
+            Text(loc(.backupSavedHint))
+        }
+    }
+
+    private func exportPDF() {
+        guard let data = ReportBuilder.makePDF(model: model) else { return }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(ReportBuilder.suggestedFilename(month: model.selectedMonth))
+        try? data.write(to: url, options: [.atomic])
+        Share.present([url])
     }
 
     private var dangerSection: some View {
@@ -111,10 +188,11 @@ struct SettingsView: View {
         guard let h = model.household else { return }
         profileName = h.name
         canton = h.canton
+        avatarName = h.avatarName
     }
 
     private func saveProfile() {
-        Task { await model.updateProfile(name: profileName, avatarName: model.household?.avatarName, canton: canton) }
+        Task { await model.updateProfile(name: profileName, avatarName: avatarName, canton: canton) }
     }
 }
 

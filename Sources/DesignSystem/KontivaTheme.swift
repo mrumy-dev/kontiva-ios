@@ -1,8 +1,8 @@
 import SwiftUI
+import KontivaCore
 
 /// iOS design tokens — the same calm palette as the desktop app, resolved via
-/// UIColor so colours adapt to light/dark on iOS. The Swiss-red accent becomes
-/// themeable later (mirroring the desktop themes); for now it is the brand default.
+/// UIColor so colours adapt to light/dark on iOS.
 /// Danger semantics (negative balances, overdue, errors) always use `swissRed`.
 enum KontivaTheme {
 
@@ -11,8 +11,11 @@ enum KontivaTheme {
     static let charcoal = Color(hex: 0x121A22)
     static let offWhite = Color(hex: 0xF6F7F8)
 
-    // Themeable accent (brand default for now).
-    static let accent = Color.adaptive(light: 0xE11D2E, dark: 0xF24A57)
+    /// The current accent colour. A mutable token (like the desktop): `AppModel`
+    /// sets it from the chosen `AccentTheme`, and because every screen observes the
+    /// model, the whole UI re-reads this on a theme change. Only ever touched on the
+    /// main thread (set via the `@MainActor` model, read in views).
+    nonisolated(unsafe) static var accent = AccentTheme.swissRed.color
 
     // Adaptive semantic colours.
     static let pageBackground = Color.adaptive(light: 0xF8F7F4, dark: 0x0F151B)
@@ -78,5 +81,21 @@ private extension UIColor {
                   green: CGFloat((hex >> 8) & 0xFF) / 255,
                   blue: CGFloat(hex & 0xFF) / 255,
                   alpha: 1)
+    }
+}
+
+extension AccentTheme {
+    /// The adaptive accent colour for this theme, tuned for both light and dark.
+    var color: Color {
+        switch self {
+        case .swissRed: return .adaptive(light: 0xE11D2E, dark: 0xF24A57)
+        case .orange:   return .adaptive(light: 0xE2622A, dark: 0xF2894E)
+        case .sand:     return .adaptive(light: 0xA87A3D, dark: 0xCBA06A)
+        case .green:    return .adaptive(light: 0x2E8B57, dark: 0x53C485)
+        case .teal:     return .adaptive(light: 0x0E8C8C, dark: 0x3FBEBE)
+        case .blue:     return .adaptive(light: 0x2563EB, dark: 0x6098F0)
+        case .purple:   return .adaptive(light: 0x7E3AA8, dark: 0xB07AD6)
+        case .pink:     return .adaptive(light: 0xD6337F, dark: 0xF06CB0)
+        }
     }
 }

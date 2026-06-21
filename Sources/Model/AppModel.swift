@@ -40,6 +40,7 @@ final class AppModel: ObservableObject {
     private var backgroundedAt: Date?
 
     private static let languageKey = "kontiva.ui.language"
+    private static let accentKey = "kontiva.ui.accent"
 
     init() {
         let savedLanguage = UserDefaults.standard.string(forKey: Self.languageKey)
@@ -52,6 +53,12 @@ final class AppModel: ObservableObject {
         self.store = store
         self.lockState = store.hasExistingVault() ? .locked : .needsSetup
         self.settings.language = savedLanguage
+        // Accent theme is a non-sensitive UI preference (UserDefaults), so it
+        // applies on the lock screen and persists across launches.
+        let savedAccent = UserDefaults.standard.string(forKey: Self.accentKey)
+            .flatMap(AccentTheme.init(rawValue:)) ?? .swissRed
+        self.settings.accent = savedAccent
+        KontivaTheme.accent = savedAccent.color
     }
 
     // MARK: Lock gate
@@ -99,6 +106,14 @@ final class AppModel: ObservableObject {
         settings.language = language
         localizer.setLanguage(language)
         UserDefaults.standard.set(language.rawValue, forKey: Self.languageKey)
+    }
+
+    /// Change the accent theme. Applies immediately across the app and persists.
+    func setAccent(_ accent: AccentTheme) {
+        guard accent != settings.accent else { return }
+        settings.accent = accent
+        KontivaTheme.accent = accent.color
+        UserDefaults.standard.set(accent.rawValue, forKey: Self.accentKey)
     }
 
     func setAutoLock(_ interval: AutoLockInterval) async {
@@ -157,6 +172,34 @@ final class AppModel: ObservableObject {
         let ok = await unlock(passphrase: passphrase)
         if !ok { disableBiometric() }   // stored passphrase no longer valid → clear it
         return ok
+    }
+
+    // MARK: Backup & restore
+
+    /// Produce a portable encrypted backup blob, or nil on failure.
+    func makeBackupData(passphrase: String) async -> Data? {
+        guard lockState == .unlocked else { return nil }
+        isWorking = true; defer { isWorking = false }
+        return try? await store.makeBackup(backupPassphrase: passphrase, appVersion: AppInfo.version)
+    }
+
+    /// Validate a backup and return its preview (counts/date), or nil if the
+    /// passphrase is wrong or the file is invalid.
+    func previewBackup(data: Data, passphrase: String) async -> BackupPreview? {
+        isWorking = true; defer { isWorking = false }
+        return try? await store.previewBackup(data: data, backupPassphrase: passphrase)
+    }
+
+    /// Guarded restore — caller must have confirmed the destructive replace.
+    @discardableResult
+    func restoreFromBackup(data: Data, passphrase: String) async -> Bool {
+        guard lockState == .unlocked else { return false }
+        isWorking = true; defer { isWorking = false }
+        do {
+            try await store.restoreBackup(data: data, backupPassphrase: passphrase)
+            await refresh()
+            return true
+        } catch { return false }
     }
 
     // MARK: Auto-lock (background idle)

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "human-05-arc.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

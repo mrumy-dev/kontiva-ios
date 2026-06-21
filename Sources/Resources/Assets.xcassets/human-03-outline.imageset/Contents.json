@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "human-03-outline.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

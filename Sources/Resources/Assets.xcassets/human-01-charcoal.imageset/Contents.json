@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "human-01-charcoal.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

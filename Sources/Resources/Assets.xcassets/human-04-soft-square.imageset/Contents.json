@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "human-04-soft-square.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

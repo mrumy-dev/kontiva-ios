@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "household-04-shared.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
