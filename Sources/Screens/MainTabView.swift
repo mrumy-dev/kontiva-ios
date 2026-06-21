@@ -4,18 +4,21 @@ import SwiftUI
 /// tab. Screens are placeholders for now — each gets ported from the desktop one,
 /// reusing the shared engine, in a later phase.
 struct MainTabView: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var loc: Localizer
+
     var body: some View {
-        TabView {
-            placeholder("Übersicht", "square.grid.2x2")
-                .tabItem { Label("Übersicht", systemImage: "square.grid.2x2") }
-            placeholder("Planung", "calendar")
-                .tabItem { Label("Planung", systemImage: "calendar") }
-            placeholder("Rechnungen", "doc.text")
-                .tabItem { Label("Rechnungen", systemImage: "doc.text") }
-            placeholder("Sparen", "banknote")
-                .tabItem { Label("Sparen", systemImage: "banknote") }
+        TabView(selection: $model.selectedTab) {
+            OverviewView()
+                .tabItem { Label(loc(.overviewTitle), systemImage: "square.grid.2x2") }.tag(0)
+            placeholder(loc(.planningTitle), "calendar")
+                .tabItem { Label(loc(.planningTitle), systemImage: "calendar") }.tag(1)
+            placeholder(loc(.billsTitle), "doc.text")
+                .tabItem { Label(loc(.billsTitle), systemImage: "doc.text") }.tag(2)
+            placeholder(loc(.navSparen), "banknote")
+                .tabItem { Label(loc(.navSparen), systemImage: "banknote") }.tag(3)
             MoreTab()
-                .tabItem { Label("Mehr", systemImage: "ellipsis.circle") }
+                .tabItem { Label("Mehr", systemImage: "ellipsis.circle") }.tag(4)
         }
     }
 

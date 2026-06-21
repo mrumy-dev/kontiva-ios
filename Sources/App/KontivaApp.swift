@@ -10,6 +10,7 @@ struct KontivaApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(model)
+                .environmentObject(model.localizer)
                 .tint(KontivaTheme.accent)
         }
     }
