@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct KontivaApp: App {
     @StateObject private var model = AppModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +13,13 @@ struct KontivaApp: App {
                 .environmentObject(model)
                 .environmentObject(model.localizer)
                 .tint(KontivaTheme.accent)
+                .onChange(of: scenePhase) { _, phase in
+                    switch phase {
+                    case .background: model.appDidEnterBackground()
+                    case .active:     model.appWillEnterForeground()
+                    default:          break
+                    }
+                }
         }
     }
 }

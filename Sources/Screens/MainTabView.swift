@@ -39,17 +39,17 @@ private struct MoreTab: View {
                         Label(loc(.navSchulden), systemImage: "creditcard")
                     }
                     NavigationLink {
-                        ComingSoon(title: loc(.navInsights), icon: "lightbulb")
+                        InsightsView()
                     } label: {
                         Label(loc(.navInsights), systemImage: "lightbulb")
                     }
                     NavigationLink {
-                        ComingSoon(title: loc(.navSettings), icon: "gearshape")
+                        SettingsView()
                     } label: {
                         Label(loc(.navSettings), systemImage: "gearshape")
                     }
                     NavigationLink {
-                        ComingSoon(title: loc(.navReport), icon: "exclamationmark.bubble")
+                        ReportProblemView()
                     } label: {
                         Label(loc(.navReport), systemImage: "exclamationmark.bubble")
                     }
@@ -65,22 +65,5 @@ private struct MoreTab: View {
             .tint(KontivaTheme.accent)
             .navigationTitle("Mehr")
         }
-    }
-}
-
-/// Temporary placeholder for screens not yet ported.
-private struct ComingSoon: View {
-    let title: String
-    let icon: String
-    var body: some View {
-        VStack(spacing: KontivaTheme.Space.sm) {
-            Image(systemName: icon).font(.system(size: 44)).foregroundStyle(KontivaTheme.accent)
-            Text(title).font(.title2.bold()).foregroundStyle(KontivaTheme.textPrimary)
-            Text("In Arbeit").font(.callout).foregroundStyle(KontivaTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(KontivaTheme.pageGradient.ignoresSafeArea())
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

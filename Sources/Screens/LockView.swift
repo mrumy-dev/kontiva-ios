@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// Unlock screen for an existing vault. (Face ID / Touch ID will layer on later.)
+/// Unlock screen for an existing vault, with optional Face ID / Touch ID.
 struct LockView: View {
     @EnvironmentObject private var model: AppModel
     @State private var passphrase = ""
     @State private var wrong = false
+    @State private var triedBiometric = false
+
+    private var canUseBiometrics: Bool { model.biometricEnabled && model.biometricKind.isAvailable }
 
     var body: some View {
         VStack(spacing: KontivaTheme.Space.lg) {
@@ -38,9 +41,26 @@ struct LockView: View {
             .controlSize(.large)
             .disabled(passphrase.isEmpty || model.isWorking)
 
+            if canUseBiometrics {
+                Button { unlockWithBiometrics() } label: {
+                    Label("Mit \(model.biometricKind.label) entsperren", systemImage: model.biometricKind.icon)
+                        .fontWeight(.medium)
+                }
+                .tint(KontivaTheme.accent)
+                .controlSize(.large)
+                .padding(.top, KontivaTheme.Space.xxs)
+            }
+
             Spacer()
         }
         .padding(KontivaTheme.Space.xl)
+        .task {
+            // Offer Face ID automatically the first time the lock screen appears.
+            if canUseBiometrics, !triedBiometric {
+                triedBiometric = true
+                unlockWithBiometrics()
+            }
+        }
     }
 
     private func submit() {
@@ -50,5 +70,9 @@ struct LockView: View {
             wrong = !ok
             if ok { passphrase = "" }
         }
+    }
+
+    private func unlockWithBiometrics() {
+        Task { _ = await model.unlockWithBiometrics() }
     }
 }

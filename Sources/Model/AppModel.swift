@@ -22,17 +22,36 @@ final class AppModel: ObservableObject {
     /// orders/savings genuinely vary by date).
     @Published var selectedMonth: Date = Calendar.swiss.startOfMonth(for: Date())
 
-    let localizer = Localizer()
+    /// Non-sensitive UI preferences (language). Persisted in UserDefaults so they
+    /// apply on the lock screen, before the encrypted store is unlocked.
+    @Published var settings = AppSettings()
+    /// Idle auto-lock interval (stored encrypted in the vault, mirrored here).
+    @Published var autoLock: AutoLockInterval = .fiveMinutes
+    /// Whether a passphrase is stored behind biometrics (Face ID / Touch ID).
+    @Published private(set) var biometricEnabled = BiometricVault.hasStored
+    var biometricKind: BiometricKind { Biometrics.kind }
+
+    let localizer: Localizer
 
     private let store: EncryptedStore
+    /// Held only while unlocked, to enrol biometrics without re-prompting; cleared on lock.
+    private var sessionPassphrase: String?
+    /// When the app was last backgrounded, for idle auto-lock on return.
+    private var backgroundedAt: Date?
+
+    private static let languageKey = "kontiva.ui.language"
 
     init() {
+        let savedLanguage = UserDefaults.standard.string(forKey: Self.languageKey)
+            .flatMap(AppLanguage.init(rawValue:)) ?? .deCH
+        self.localizer = Localizer(language: savedLanguage)
         let location = (try? StoreLocation.applicationSupport())
             ?? StoreLocation(directory: FileManager.default.temporaryDirectory
                 .appendingPathComponent("Kontiva", isDirectory: true))
         let store = EncryptedStore(location: location)
         self.store = store
         self.lockState = store.hasExistingVault() ? .locked : .needsSetup
+        self.settings.language = savedLanguage
     }
 
     // MARK: Lock gate
@@ -42,6 +61,7 @@ final class AppModel: ObservableObject {
         isWorking = true; defer { isWorking = false }
         do {
             try await store.createVault(passphrase: passphrase)
+            sessionPassphrase = passphrase
             await refresh()
             lockState = .unlocked
         } catch { }
@@ -52,6 +72,7 @@ final class AppModel: ObservableObject {
         isWorking = true; defer { isWorking = false }
         do {
             try await store.unlock(passphrase: passphrase)
+            sessionPassphrase = passphrase
             await refresh()
             justUnlocked = true
             lockState = .unlocked
@@ -61,12 +82,94 @@ final class AppModel: ObservableObject {
 
     func lock() async {
         await store.lock()
+        sessionPassphrase = nil
         dataset = .empty
         lockState = .locked
     }
 
     private func refresh() async {
         dataset = (try? await store.snapshot()) ?? .empty
+        autoLock = dataset.securitySettings.autoLock
+    }
+
+    // MARK: Settings
+
+    func setLanguage(_ language: AppLanguage) {
+        guard language != localizer.language else { return }
+        settings.language = language
+        localizer.setLanguage(language)
+        UserDefaults.standard.set(language.rawValue, forKey: Self.languageKey)
+    }
+
+    func setAutoLock(_ interval: AutoLockInterval) async {
+        autoLock = interval
+        await mutate { $0.securitySettings.autoLock = interval }
+    }
+
+    func updateProfile(name: String, avatarName: String?, canton: Canton?) async {
+        await mutate { ds in
+            var h = ds.household ?? Household(name: name)
+            h.name = name; h.avatarName = avatarName; h.canton = canton
+            ds.household = h
+        }
+    }
+
+    @discardableResult
+    func changePassphrase(old: String, new: String) async -> Bool {
+        isWorking = true; defer { isWorking = false }
+        do {
+            try await store.changePassphrase(old: old, new: new)
+            sessionPassphrase = new
+            if biometricEnabled { _ = BiometricVault.store(passphrase: new) }   // keep biometrics in sync
+            return true
+        } catch { return false }
+    }
+
+    func deleteAllLocalData() async {
+        try? await store.deleteAllData()
+        disableBiometric()
+        sessionPassphrase = nil
+        dataset = .empty
+        lockState = .needsSetup
+    }
+
+    // MARK: Biometric unlock (Face ID / Touch ID)
+
+    /// Store the current passphrase behind biometrics. Requires being unlocked.
+    @discardableResult
+    func enableBiometric() -> Bool {
+        guard let passphrase = sessionPassphrase else { return false }
+        let ok = BiometricVault.store(passphrase: passphrase)
+        biometricEnabled = BiometricVault.hasStored
+        return ok
+    }
+
+    func disableBiometric() {
+        BiometricVault.delete()
+        biometricEnabled = false
+    }
+
+    /// Prompt biometrics and unlock with the stored passphrase. Returns success.
+    @discardableResult
+    func unlockWithBiometrics() async -> Bool {
+        guard biometricEnabled, biometricKind.isAvailable else { return false }
+        guard let passphrase = await BiometricVault.retrieve(reason: localizer.string(.lockTitle)) else { return false }
+        let ok = await unlock(passphrase: passphrase)
+        if !ok { disableBiometric() }   // stored passphrase no longer valid → clear it
+        return ok
+    }
+
+    // MARK: Auto-lock (background idle)
+
+    func appDidEnterBackground() { backgroundedAt = Date() }
+
+    func appWillEnterForeground() {
+        defer { backgroundedAt = nil }
+        // `.never` → seconds is nil → no auto-lock. Otherwise lock if idle past the limit.
+        guard lockState == .unlocked, let since = backgroundedAt, let limit = autoLock.seconds else { return }
+        if Date().timeIntervalSince(since) >= limit {
+            Task { await lock() }
+        }
     }
 
     // MARK: Month
@@ -118,6 +221,12 @@ final class AppModel: ObservableObject {
 
     var totalMonthlySavings: Money { savingsGoals.compactMap(\.monthlyContribution).total() }
     var totalAccumulatedSavings: Money { savingsGoals.map { $0.accumulated(asOf: selectedMonth) }.total() }
+
+    var insights: [Insight] {
+        InsightEngine.analyze(
+            incomes: incomes, fixedCosts: fixedCosts, variableBudgets: variableBudgets,
+            bills: bills, savingsGoals: savingsGoals, availability: availability, asOf: selectedMonth)
+    }
 
     // MARK: Debts (overdue bills flow in automatically, as of today)
 

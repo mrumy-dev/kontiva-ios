@@ -37,9 +37,15 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_KEY_CFBundleDisplayName: Kontiva
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        # Face ID / Touch ID convenience unlock (the passphrase stays the root secret).
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Kontiva nutzt Face ID, um Ihren verschlüsselten Tresor zu entsperren.
         # Privacy-first: no networking. Encourage HTTPS-only just in case.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CODE_SIGN_STYLE: Automatic
+        # Ad-hoc signing so the app gets keychain entitlements (Face ID unlock needs
+        # the Keychain). A real Apple team is set up later for device/TestFlight.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_ENTITLEMENTS: Kontiva.entitlements
         # DEVELOPMENT_TEAM left blank until the paid Apple account is set up.
         SUPPORTS_MACCATALYST: "NO"
