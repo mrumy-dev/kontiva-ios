@@ -128,4 +128,66 @@ final class AppModel: ObservableObject {
     var totalManualDebt: Money { debts.map(\.amount).total() }
     var totalDebt: Money { totalOverdueBills + totalManualDebt }
     var hasAnyDebt: Bool { !overdueBills.isEmpty || !debts.isEmpty }
+
+    // MARK: CRUD — every change is persisted, encrypted, via the shared store.
+
+    private func mutate(_ block: @Sendable @escaping (inout AppDataset) -> Void) async {
+        guard lockState == .unlocked else { return }
+        try? await store.mutate(block)
+        await refresh()
+    }
+
+    func upsertIncome(_ income: Income) async {
+        await mutate { ds in
+            if let i = ds.incomes.firstIndex(where: { $0.id == income.id }) { ds.incomes[i] = income }
+            else { ds.incomes.append(income) }
+        }
+    }
+    func deleteIncome(_ id: UUID) async { await mutate { $0.incomes.removeAll { $0.id == id } } }
+
+    func upsertFixedCost(_ item: RecurringFixedExpense) async {
+        await mutate { ds in
+            if let i = ds.fixedCosts.firstIndex(where: { $0.id == item.id }) { ds.fixedCosts[i] = item }
+            else { ds.fixedCosts.append(item) }
+        }
+    }
+    func deleteFixedCost(_ id: UUID) async { await mutate { $0.fixedCosts.removeAll { $0.id == id } } }
+
+    func upsertVariableBudget(_ item: VariableMonthlyBudget) async {
+        await mutate { ds in
+            if let i = ds.variableBudgets.firstIndex(where: { $0.id == item.id }) { ds.variableBudgets[i] = item }
+            else { ds.variableBudgets.append(item) }
+        }
+    }
+    func deleteVariableBudget(_ id: UUID) async { await mutate { $0.variableBudgets.removeAll { $0.id == id } } }
+
+    func upsertSavingsGoal(_ item: SavingsGoal) async {
+        await mutate { ds in
+            if let i = ds.savingsGoals.firstIndex(where: { $0.id == item.id }) { ds.savingsGoals[i] = item }
+            else { ds.savingsGoals.append(item) }
+        }
+    }
+    func deleteSavingsGoal(_ id: UUID) async { await mutate { $0.savingsGoals.removeAll { $0.id == id } } }
+
+    func upsertBill(_ bill: OneOffBill) async {
+        await mutate { ds in
+            if let i = ds.bills.firstIndex(where: { $0.id == bill.id }) { ds.bills[i] = bill }
+            else { ds.bills.append(bill) }
+        }
+    }
+    func deleteBill(_ id: UUID) async { await mutate { $0.bills.removeAll { $0.id == id } } }
+
+    func upsertDebt(_ debt: DebtItem) async {
+        await mutate { ds in
+            if let i = ds.debts.firstIndex(where: { $0.id == debt.id }) { ds.debts[i] = debt }
+            else { ds.debts.append(debt) }
+        }
+    }
+    func deleteDebt(_ id: UUID) async { await mutate { $0.debts.removeAll { $0.id == id } } }
+
+    // Reordering (display order only — the maths is order-independent).
+    func moveIncomes(from: IndexSet, to: Int) async { await mutate { $0.incomes.move(fromOffsets: from, toOffset: to) } }
+    func moveFixedCosts(from: IndexSet, to: Int) async { await mutate { $0.fixedCosts.move(fromOffsets: from, toOffset: to) } }
+    func moveVariableBudgets(from: IndexSet, to: Int) async { await mutate { $0.variableBudgets.move(fromOffsets: from, toOffset: to) } }
+    func moveSavingsGoals(from: IndexSet, to: Int) async { await mutate { $0.savingsGoals.move(fromOffsets: from, toOffset: to) } }
 }

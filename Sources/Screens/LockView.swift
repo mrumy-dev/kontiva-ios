@@ -9,8 +9,11 @@ struct LockView: View {
     var body: some View {
         VStack(spacing: KontivaTheme.Space.lg) {
             Spacer()
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 64)).foregroundStyle(KontivaTheme.accent)
+            Image("BrandIcon")
+                .resizable().scaledToFit()
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: KontivaTheme.charcoal.opacity(0.18), radius: 12, y: 6)
             Text("Willkommen zurück").font(.title.bold())
             Text("Ihre Daten werden lokal und verschlüsselt gespeichert (AES-256-GCM).")
                 .font(.caption).foregroundStyle(KontivaTheme.textTertiary)

@@ -11,7 +11,7 @@ struct MainTabView: View {
         TabView(selection: $model.selectedTab) {
             OverviewView()
                 .tabItem { Label(loc(.overviewTitle), systemImage: "square.grid.2x2") }.tag(0)
-            placeholder(loc(.planningTitle), "calendar")
+            PlanningView()
                 .tabItem { Label(loc(.planningTitle), systemImage: "calendar") }.tag(1)
             placeholder(loc(.billsTitle), "doc.text")
                 .tabItem { Label(loc(.billsTitle), systemImage: "doc.text") }.tag(2)
