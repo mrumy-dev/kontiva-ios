@@ -1,0 +1,18 @@
+# Xcode / SwiftPM build artifacts
+.build/
+DerivedData/
+build/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# The .xcodeproj is GENERATED from project.yml by XcodeGen — regenerate, don't commit.
+Kontiva.xcodeproj/
+
+# macOS
+.DS_Store
+
+# Defence in depth — never commit secrets/vaults/backups
+*.kontivabackup
+*.kenc
+keystore.json

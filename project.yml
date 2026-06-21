@@ -1,0 +1,45 @@
+name: Kontiva
+options:
+  bundleIdPrefix: ch.kontiva
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+# The shared engine, consumed as a local Swift package. KontivaKit is the single
+# source of truth for model/crypto/storage; this app adds the touch UI.
+packages:
+  KontivaKit:
+    path: ../KontivaKit
+
+targets:
+  Kontiva:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    dependencies:
+      - package: KontivaKit
+        product: KontivaCore
+      - package: KontivaKit
+        product: KontivaSecurity
+      - package: KontivaKit
+        product: KontivaPersistence
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ch.kontiva.ios
+        PRODUCT_NAME: Kontiva
+        MARKETING_VERSION: "0.0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        # iPhone first (family 1); iPad (1,2) comes later as its own workspace.
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_CFBundleDisplayName: Kontiva
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        # Privacy-first: no networking. Encourage HTTPS-only just in case.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        # DEVELOPMENT_TEAM left blank until the paid Apple account is set up.
+        SUPPORTS_MACCATALYST: "NO"
