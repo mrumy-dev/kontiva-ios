@@ -3,6 +3,7 @@ import SwiftUI
 /// Top-level gate: first run → onboarding, existing vault → lock, unlocked → app.
 struct RootView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var loc: Localizer
 
     var body: some View {
         ZStack {
@@ -13,5 +14,8 @@ struct RootView: View {
             case .unlocked:   MainTabView()
             }
         }
+        // Mirror the whole UI for right-to-left scripts (Arabic, Urdu, Pashto).
+        // `loc` republishes on language change, so this updates live.
+        .environment(\.layoutDirection, loc.language.isRTL ? .rightToLeft : .leftToRight)
     }
 }
